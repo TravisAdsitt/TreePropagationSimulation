@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
+
+project(ObjectPropagation VERSION 0.1)
+
+find_package(SFML 2.5 
+  COMPONENTS 
+    system window graphics network audio REQUIRED)
+
+add_executable(ObjectPropagation sim.cpp)
+target_link_libraries(ObjectPropagation sfml-graphics)
