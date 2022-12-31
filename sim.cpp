@@ -18,6 +18,16 @@ bool get_rand_bool(float chance = 0.5){
     return distribution(generator) < chance;
 }
 
+float get_rand_float(){
+    return distribution(generator);
+}
+
+
+template<typename Base, typename T>
+inline bool instanceof(const T *ptr) {
+   return dynamic_cast<const Base*>(ptr) != nullptr;
+}
+
 class Cell{
     protected:
     sf::Vector2f pos, area;
@@ -59,14 +69,19 @@ class GridCell : public Cell{
     }
 };
 
+class SeedCell: public GridCell{
+    public:
+    using GridCell::GridCell;
+};
+
 class LeafCell: public GridCell{
     float density = 0;
     float total_time_alive = 0;
     float current_life_cycle = 0;
 
-    int total_life_cycle = 5;
+    int total_life_cycle = 10;
     int ripe_time = 2;
-    int old_time = 4;
+    int old_time = 6;
     int *new_growth_count;
     int propagation_level;
 
@@ -92,26 +107,50 @@ class LeafCell: public GridCell{
         bool prop_w = get_rand_bool(0.25);
 
         if(!(*N) && *new_growth_count > 0 && prop_n) {
-            std::cout << "Propagating Leaf Cell North!" << std::endl;
-            *N = new LeafCell(get_pos_in_direction(north), area, window, grid_width, grid_height, propagation_level - 1, new_growth_count);
+            *N = new LeafCell(get_pos_in_direction(north), area, window, grid_height, grid_width, propagation_level - 1, new_growth_count);
             (*new_growth_count)--;
         }
         if(!(*E) && *new_growth_count > 0 && prop_e) {
-            std::cout << "Propagating Leaf Cell East!" << std::endl;
-            *E = new LeafCell(get_pos_in_direction(east), area, window, grid_width, grid_height, propagation_level - 1, new_growth_count);
+            *E = new LeafCell(get_pos_in_direction(east), area, window, grid_height, grid_width, propagation_level - 1, new_growth_count);
             (*new_growth_count)--;
         }
         if(!(*S) && *new_growth_count > 0 && prop_s){
-            std::cout << "Propagating Leaf Cell South!" << std::endl;
-            *S = new LeafCell(get_pos_in_direction(south), area, window, grid_width, grid_height, propagation_level - 1, new_growth_count);
+            *S = new LeafCell(get_pos_in_direction(south), area, window, grid_height, grid_width, propagation_level - 1, new_growth_count);
             (*new_growth_count)--;
         } 
         if(!(*W) && *new_growth_count > 0 && prop_w) {
-            std::cout << "Propagating Leaf Cell West!" << std::endl;
-            *W = new LeafCell(get_pos_in_direction(west), area, window, grid_width, grid_height, propagation_level - 1, new_growth_count);
+            *W = new LeafCell(get_pos_in_direction(west), area, window, grid_height, grid_width, propagation_level - 1, new_growth_count);
             (*new_growth_count)--;
         }
     }
+
+    void propagate_seed(GridCell **N, GridCell **E, GridCell **S, GridCell **W){
+        if((*N) && (*E) && (*S) && (*W)) return;
+        if (propagation_level > 0) return;
+
+        bool prop_n = get_rand_bool(0.01);
+        bool prop_e = get_rand_bool(0.01);
+        bool prop_s = get_rand_bool(0.01);
+        bool prop_w = get_rand_bool(0.01);
+
+        if(!(*N) && *new_growth_count > 0 && prop_n) {
+            *N = new SeedCell(get_pos_in_direction(north), area, window, grid_width, grid_height);
+            (*new_growth_count)--;
+        }
+        if(!(*E) && *new_growth_count > 0 && prop_e) {
+            *E = new SeedCell(get_pos_in_direction(north), area, window, grid_width, grid_height);
+            (*new_growth_count)--;
+        }
+        if(!(*S) && *new_growth_count > 0 && prop_s){
+            *S = new SeedCell(get_pos_in_direction(north), area, window, grid_width, grid_height);
+            (*new_growth_count)--;
+        } 
+        if(!(*W) && *new_growth_count > 0 && prop_w) {
+            *W = new SeedCell(get_pos_in_direction(north), area, window, grid_width, grid_height);
+            (*new_growth_count)--;
+        }
+    }
+
     void step(GridCell **N, GridCell **E, GridCell **S, GridCell **W, sf::Time elapsed){
         total_time_alive += elapsed.asSeconds();
         current_life_cycle = fmod(total_time_alive, total_life_cycle);
@@ -119,6 +158,7 @@ class LeafCell: public GridCell{
         if(current_life_cycle < ripe_time){
             if ((total_time_alive / total_life_cycle) >= 1){
                 propagate_leaves(N, E, S, W);
+                propagate_seed(N, E, S, W);
             }
             density = current_life_cycle / ripe_time;
             fill = ripe;
@@ -145,7 +185,7 @@ class TrunkCell: public GridCell{
     float density = 0;
     float current_maturity = 0;
     float total_time_alive = 0;
-    int maturity_time = 5;
+    int maturity_time = 10;
     int current_season = 0;
     int past_season = 0;
     int season_allowable_new_growth = 1;
@@ -166,19 +206,15 @@ class TrunkCell: public GridCell{
         
         if (density > 1){
             if(!*N){
-                std::cout << "Trunk Propagated North" << std::endl;
                 *N = new LeafCell(get_pos_in_direction(north), area, window, grid_width, grid_height, 3, &season_allowable_new_growth);
             }
             if(!*E){
-                std::cout << "Trunk Propagated East" << std::endl;
                 *E = new LeafCell(get_pos_in_direction(east), area, window, grid_width, grid_height, 3, &season_allowable_new_growth);
             }
             if(!*S){
-                std::cout << "Trunk Propagated South" << std::endl;
                 *S = new LeafCell(get_pos_in_direction(south), area, window, grid_width, grid_height, 3, &season_allowable_new_growth);
             }
             if(!*W){
-                std::cout << "Trunk Propagated West" << std::endl;
                 *W = new LeafCell(get_pos_in_direction(west), area, window, grid_width, grid_height, 3, &season_allowable_new_growth);
             }
         }
@@ -189,6 +225,7 @@ class TrunkCell: public GridCell{
             density = 1;
         }
         current_season = total_time_alive / maturity_time;
+
         if (current_season != past_season){
             season_allowable_new_growth = 1;
             past_season = current_season;
@@ -202,7 +239,7 @@ class Grid{
     int grid_width, grid_height;
     sf::Vector2f block_area;
     sf::RenderWindow *window;
-    TrunkCell *new_trunk;
+    SeedCell *new_trunk;
     public:
     Grid(int window_p_width, int window_p_height, int grid_width, int grid_height, sf::RenderWindow *window) : grid_width(grid_width), grid_height(grid_height), window(window){
         // Initialize our grid
@@ -212,11 +249,15 @@ class Grid{
         block_area.x = window_p_width / grid_width;
         block_area.y = window_p_height / grid_height;
 
-        int trunk_x = 4;
-        int trunk_y = 5;
-
-        new_trunk = new TrunkCell(sf::Vector2f(trunk_x,trunk_y), block_area, window, grid_width, grid_height);
-        grid[(trunk_y * grid_width) + trunk_x] = new_trunk;
+        for(int t_i = 0; t_i < 1;){
+            int trunk_x = (int) (get_rand_float() * grid_width);
+            int trunk_y = (int) (get_rand_float() * grid_height);
+            if (!grid[(trunk_y * grid_width) + trunk_x]){
+                new_trunk = new SeedCell(sf::Vector2f(trunk_x,trunk_y), block_area, window, grid_height, grid_width);
+                grid[(trunk_y * grid_width) + trunk_x] = new_trunk;
+                t_i++;
+            }
+        }
 
     }
 
@@ -235,7 +276,11 @@ class Grid{
                     int e_index = (curr_e.y * grid_width) + curr_e.x;
                     int w_index = (curr_w.y * grid_width) + curr_w.x;
 
-                    grid[(y * grid_width) + x]->step(&grid[n_index], &grid[e_index], &grid[s_index], &grid[w_index], elapsed);
+                    curr_pointer->step(&grid[n_index], &grid[e_index], &grid[s_index], &grid[w_index], elapsed);
+                    if(instanceof<SeedCell>(curr_pointer) && get_rand_bool(0.01)){
+                        delete curr_pointer;
+                        grid[(y * grid_width) + x] = new TrunkCell(sf::Vector2f(x,y), block_area, window, grid_height, grid_width);
+                    }
                 }
             }
         }
@@ -256,13 +301,13 @@ class Grid{
 
 int main()
 {
-    int window_p_width = 800;
-    int window_p_height = 600;
+    int window_p_width = 900;
+    int window_p_height = 900;
     generator.seed(time(0));
 
     // create the window
     sf::RenderWindow window(sf::VideoMode(window_p_width, window_p_height), "Tree Propogation 2D");
-    Grid grid(window_p_width, window_p_height, 80, 60, &window);
+    Grid grid(window_p_width, window_p_height, window_p_width / 10, window_p_height / 10, &window);
     sf::Clock clock;
     // run the program as long as the window is open
     while (window.isOpen())
