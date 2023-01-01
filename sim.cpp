@@ -28,6 +28,8 @@ inline bool instanceof(const T *ptr) {
    return dynamic_cast<const Base*>(ptr) != nullptr;
 }
 
+
+
 class Cell{
     protected:
     sf::Vector2f pos, area;
@@ -61,7 +63,7 @@ class GridCell : public Cell{
             return sf::Vector2f((pos.x > 0) ? (pos.x - 1) : grid_width - 1, pos.y);
         }
     }
-    virtual void step(GridCell **N, GridCell **E, GridCell **S, GridCell **W, sf::Time elapsed){
+    virtual void step(GridCell **N, GridCell **E, GridCell **S, GridCell **W, float elapsed){
         // Take actions here
     }
     virtual void draw(){
@@ -151,8 +153,8 @@ class LeafCell: public GridCell{
         }
     }
 
-    void step(GridCell **N, GridCell **E, GridCell **S, GridCell **W, sf::Time elapsed){
-        total_time_alive += elapsed.asSeconds();
+    void step(GridCell **N, GridCell **E, GridCell **S, GridCell **W, float elapsed){
+        total_time_alive += elapsed;
         current_life_cycle = fmod(total_time_alive, total_life_cycle);
 
         if(current_life_cycle < ripe_time){
@@ -201,8 +203,8 @@ class TrunkCell: public GridCell{
         shape.setFillColor(sf::Color(0x96, 0x4B, 0));
         window->draw(shape);
     }
-    void step(GridCell **N, GridCell **E, GridCell **S, GridCell **W, sf::Time elapsed){
-        total_time_alive += elapsed.asSeconds();
+    void step(GridCell **N, GridCell **E, GridCell **S, GridCell **W, float elapsed){
+        total_time_alive += elapsed;
         
         if (density > 1){
             if(!*N){
@@ -220,7 +222,7 @@ class TrunkCell: public GridCell{
         }
         if (density < 1){
             density = current_maturity / maturity_time;
-            current_maturity += elapsed.asSeconds();
+            current_maturity += elapsed;
         }else{
             density = 1;
         }
@@ -241,7 +243,7 @@ class Grid{
     sf::RenderWindow *window;
     SeedCell *new_trunk;
     public:
-    Grid(int window_p_width, int window_p_height, int grid_width, int grid_height, sf::RenderWindow *window) : grid_width(grid_width), grid_height(grid_height), window(window){
+    Grid(int window_p_width, int window_p_height, int grid_width, int grid_height, sf::RenderWindow *window, int starting_seed_count = 1000) : grid_width(grid_width), grid_height(grid_height), window(window){
         // Initialize our grid
         grid = (GridCell **)malloc(sizeof(GridCell*) * (grid_height * grid_width));
         for (int i = 0; i < (grid_height * grid_width); i++) grid[i] = NULL;
@@ -249,7 +251,7 @@ class Grid{
         block_area.x = window_p_width / grid_width;
         block_area.y = window_p_height / grid_height;
 
-        for(int t_i = 0; t_i < 1;){
+        for(int t_i = 0; t_i < starting_seed_count;){
             int trunk_x = (int) (get_rand_float() * grid_width);
             int trunk_y = (int) (get_rand_float() * grid_height);
             if (!grid[(trunk_y * grid_width) + trunk_x]){
@@ -261,26 +263,32 @@ class Grid{
 
     }
 
-    void step(sf::Time elapsed){
+    void step(float elapsed){
         for (int y = 0; y < grid_height; y++){
             for (int x = 0; x < grid_width; x++){
                 GridCell *curr_pointer = grid[(y * grid_width) + x];
                 if(curr_pointer){
-                    sf::Vector2f curr_n = curr_pointer->get_pos_in_direction(north);
-                    sf::Vector2f curr_s = curr_pointer->get_pos_in_direction(south);
-                    sf::Vector2f curr_e = curr_pointer->get_pos_in_direction(east);
-                    sf::Vector2f curr_w = curr_pointer->get_pos_in_direction(west);
-
-                    int n_index = (curr_n.y * grid_width) + curr_n.x;
-                    int s_index = (curr_s.y * grid_width) + curr_s.x;
-                    int e_index = (curr_e.y * grid_width) + curr_e.x;
-                    int w_index = (curr_w.y * grid_width) + curr_w.x;
-
-                    curr_pointer->step(&grid[n_index], &grid[e_index], &grid[s_index], &grid[w_index], elapsed);
-                    if(instanceof<SeedCell>(curr_pointer) && get_rand_bool(0.01)){
+                    if(instanceof<SeedCell>(curr_pointer)){
                         delete curr_pointer;
-                        grid[(y * grid_width) + x] = new TrunkCell(sf::Vector2f(x,y), block_area, window, grid_height, grid_width);
+                        grid[(y * grid_width) + x] = NULL;
+
+                        if(get_rand_bool(0.01) || true){
+                            grid[(y * grid_width) + x] = new TrunkCell(sf::Vector2f(x,y), block_area, window, grid_height, grid_width);
+                        }
+                    }else{
+                        sf::Vector2f curr_n = curr_pointer->get_pos_in_direction(north);
+                        sf::Vector2f curr_s = curr_pointer->get_pos_in_direction(south);
+                        sf::Vector2f curr_e = curr_pointer->get_pos_in_direction(east);
+                        sf::Vector2f curr_w = curr_pointer->get_pos_in_direction(west);
+
+                        int n_index = (curr_n.y * grid_width) + curr_n.x;
+                        int s_index = (curr_s.y * grid_width) + curr_s.x;
+                        int e_index = (curr_e.y * grid_width) + curr_e.x;
+                        int w_index = (curr_w.y * grid_width) + curr_w.x;
+
+                        curr_pointer->step(&grid[n_index], &grid[e_index], &grid[s_index], &grid[w_index], elapsed);
                     }
+                    
                 }
             }
         }
@@ -301,12 +309,16 @@ class Grid{
 
 int main()
 {
-    int window_p_width = 900;
-    int window_p_height = 900;
+    int window_p_width = 10000;
+    int window_p_height = 10000;
     generator.seed(time(0));
 
     // create the window
-    sf::RenderWindow window(sf::VideoMode(window_p_width, window_p_height), "Tree Propogation 2D");
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Tree Propagation 2D");
+    // Create a viewport
+    sf::View viewport(sf::Vector2f(window_p_width / 2, window_p_height / 2), sf::Vector2f(window_p_width / 10, window_p_height / 10));
+    window.setView(viewport);
+
     Grid grid(window_p_width, window_p_height, window_p_width / 10, window_p_height / 10, &window);
     sf::Clock clock;
     // run the program as long as the window is open
@@ -321,12 +333,20 @@ int main()
                 window.close();
         }
 
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))viewport.move(-1.f, 0.f);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))viewport.move(1.f, 0.f);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))viewport.move(0.f, -1.f);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))viewport.move(0.f, 1.f);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))viewport.zoom(1.01);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))viewport.zoom(0.99);
+
+        window.setView(viewport);
+
         // clear the window with black color
         window.clear(sf::Color::Black);
 
         // draw everything here...
-        // window.draw(...);
-        grid.step(clock.restart());
+        grid.step(clock.restart().asSeconds());
         grid.draw();
 
         // end the current frame
