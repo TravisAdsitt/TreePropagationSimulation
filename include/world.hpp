@@ -11,6 +11,7 @@ class World{
     int grid_width, grid_height;
     sf::Vector2f block_area;
     sf::RenderWindow *window;
+    sf::RectangleShape horizontal_edge_line, vertical_edge_line;
     SeedCell *new_trunk;
     public:
     World(sf::RenderWindow *window, int starting_seed_count = config::starting_seed_count) : grid_width(config::grid_edge_size), grid_height(config::grid_edge_size), window(window){
@@ -18,6 +19,7 @@ class World{
         grid = (GridCell **)malloc(sizeof(GridCell*) * (grid_width * grid_height));
         for (int i = 0; i < (grid_width * grid_height); i++) grid[i] = NULL;
 
+        // Plant Random Seeds
         for(int t_i = 0; t_i < starting_seed_count;){
             int trunk_x = (int) (get_rand_float() * grid_width);
             int trunk_y = (int) (get_rand_float() * grid_height);
@@ -27,6 +29,11 @@ class World{
             }
         }
 
+        // Setup our horizontal edge drawing line
+        horizontal_edge_line.setSize(sf::Vector2f(grid_width * config::block_edge_size, config::sim_border_width));
+        // Setup our vertical edge drawing line
+        vertical_edge_line.setSize(sf::Vector2f(grid_height * config::block_edge_size, config::sim_border_width));
+        vertical_edge_line.rotate(90.f);
     }
     void step(int current_tick){
         for (int y = 0; y < grid_height; y++){
@@ -58,8 +65,22 @@ class World{
             }
         }
     }
+    void draw_simulation_area_outline(){
+        // Draw edges
+        horizontal_edge_line.setPosition(sf::Vector2f(0, 0 - config::sim_border_width));
+        vertical_edge_line.setPosition(sf::Vector2f(0 - config::sim_border_width, 0));
+        window->draw(vertical_edge_line);
+        window->draw(horizontal_edge_line);
+
+        horizontal_edge_line.setPosition(sf::Vector2f(0, (grid_height * config::block_edge_size) + config::sim_border_width));
+        vertical_edge_line.setPosition(sf::Vector2f((grid_width * config::block_edge_size) + config::sim_border_width, 0));
+        window->draw(vertical_edge_line);
+        window->draw(horizontal_edge_line);
+        
+    }
     void draw(){
         int draw_count = 0;
+        draw_simulation_area_outline();
         for (int y = 0; y < grid_height; y++){
             for (int x = 0; x < grid_width; x++){
                 if(grid[(y * grid_width) + x]){

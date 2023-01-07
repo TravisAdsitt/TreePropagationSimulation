@@ -12,8 +12,9 @@ int main()
 
     // create the window
     sf::RenderWindow window(sf::VideoMode(800, 600), "Tree Propagation 2D");
+
     // Create a viewport
-    sf::View viewport(sf::Vector2f((config::grid_edge_size * config::block_edge_size) / 2, (config::grid_edge_size * config::block_edge_size) / 2), sf::Vector2f(config::block_edge_size * 10, config::block_edge_size * 10));
+    sf::View viewport(sf::Vector2f((config::grid_edge_size * config::block_edge_size) / 2, (config::grid_edge_size * config::block_edge_size) / 2), sf::Vector2f(config::block_edge_size * config::grid_edge_size, config::block_edge_size * config::grid_edge_size));
     window.setView(viewport);
 
     World grid(&window);
